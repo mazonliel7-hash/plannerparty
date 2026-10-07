@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "591479730520",
+    "project_id": "liel12",
+    "storage_bucket": "liel12.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:591479730520:android:6c795761e479bf890fb52d",
+        "android_client_info": {
+          "package_name": "com.example.liel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDvfEa2qjHYr4B4Bt0OO5KP0BH8yJKNHjk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

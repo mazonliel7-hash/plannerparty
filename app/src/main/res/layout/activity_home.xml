@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/pink_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp"
+        android:layoutDirection="rtl">
+
+        <!-- כותרת -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Party Planner"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:fontFamily="cursive"
+            android:textColor="#E83E82"
+            android:gravity="center"
+            android:layout_marginTop="24dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="המסיבות שלך מתחילות כאן 💗"
+            android:textSize="20sp"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="30dp" />
+
+        <!-- יצירת מסיבה -->
+        <Button
+            android:id="@+id/createPartyButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="＋  יצירת מסיבה חדשה"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:textAllCaps="false"
+            android:background="@drawable/pink_button"
+            android:backgroundTint="#E83E82" />
+
+        <!-- כותרת המסיבות -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="המסיבות שלי 🎉"
+            android:textSize="25sp"
+            android:textStyle="bold"
+            android:textColor="#B92D68"
+            android:layout_marginTop="35dp"
+            android:layout_marginBottom="15dp" />
+
+        <!-- הודעה כשאין מסיבות -->
+        <TextView
+            android:id="@+id/emptyPartiesText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="עדיין אין לך מסיבות מתוכננות.\nזה הזמן לתכנן את הראשונה! 💕"
+            android:textSize="17sp"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:padding="20dp" />
+
+        <!-- כאן תופיע רשימת המסיבות מ-Firebase -->
+        <LinearLayout
+            android:id="@+id/partiesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </LinearLayout>
+
+</ScrollView>

@@ -3,7 +3,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/pink_background"
+    android:background="@drawable/party_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -14,7 +14,6 @@
         android:padding="24dp"
         android:layoutDirection="rtl">
 
-        <!-- כותרת -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -36,7 +35,6 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="30dp" />
 
-        <!-- יצירת מסיבה -->
         <Button
             android:id="@+id/createPartyButton"
             android:layout_width="match_parent"
@@ -49,7 +47,6 @@
             android:background="@drawable/pink_button"
             android:backgroundTint="#E83E82" />
 
-        <!-- כותרת המסיבות -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -60,7 +57,6 @@
             android:layout_marginTop="35dp"
             android:layout_marginBottom="15dp" />
 
-        <!-- הודעה כשאין מסיבות -->
         <TextView
             android:id="@+id/emptyPartiesText"
             android:layout_width="match_parent"
@@ -71,7 +67,6 @@
             android:gravity="center"
             android:padding="20dp" />
 
-        <!-- כאן תופיע רשימת המסיבות מ-Firebase -->
         <LinearLayout
             android:id="@+id/partiesContainer"
             android:layout_width="match_parent"

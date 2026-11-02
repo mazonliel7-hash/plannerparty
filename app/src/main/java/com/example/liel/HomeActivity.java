@@ -245,6 +245,7 @@ public class HomeActivity extends AppCompatActivity {
                             location = "לא הוגדר מיקום";
                         }
 
+                        // יצירת כרטיס המסיבה
                         TextView partyCard = new TextView(this);
 
                         partyCard.setText(
@@ -255,11 +256,8 @@ public class HomeActivity extends AppCompatActivity {
 
                         partyCard.setTextSize(17);
                         partyCard.setTextColor(0xFFB92D68);
-                        partyCard.setTypeface(
-                                null,
-                                Typeface.BOLD
-                        );
-                        partyCard.setGravity(Gravity.RIGHT);
+                        partyCard.setTypeface(null, android.graphics.Typeface.BOLD);
+                        partyCard.setGravity(android.view.Gravity.RIGHT);
                         partyCard.setPadding(30, 25, 30, 25);
                         partyCard.setBackgroundResource(
                                 R.drawable.edit_text_background
@@ -274,6 +272,33 @@ public class HomeActivity extends AppCompatActivity {
                         params.bottomMargin = 20;
 
                         partyCard.setLayoutParams(params);
+
+                        // שמירת פרטי המסיבה לצורך פתיחת המסך שלה
+                        final String savedName = name;
+                        final String savedDate = date;
+                        final String savedLocation = location;
+                        final String savedPartyId = document.getId();
+
+                        // לחיצה על כרטיס המסיבה
+                        partyCard.setClickable(true);
+
+                        partyCard.setOnClickListener(v -> {
+
+                            android.content.Intent intent =
+                                    new android.content.Intent(
+                                            HomeActivity.this,
+                                            PartyActivity.class
+                                    );
+
+                            intent.putExtra("partyId", savedPartyId);
+                            intent.putExtra("partyName", savedName);
+                            intent.putExtra("partyDate", savedDate);
+                            intent.putExtra("partyLocation", savedLocation);
+
+                            startActivity(intent);
+                        });
+
+                        // הוספת הכרטיס לרשימה
                         partiesContainer.addView(partyCard);
                     }
                 });

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/party_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp"
+        android:layoutDirection="rtl">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Party Planner"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:fontFamily="cursive"
+            android:textColor="#E83E82"
+            android:gravity="center"
+            android:layout_marginTop="25dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="המסיבה שלי 🎉"
+            android:textSize="25sp"
+            android:textStyle="bold"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:layout_marginTop="25dp"
+            android:layout_marginBottom="25dp" />
+
+        <TextView
+            android:id="@+id/partyNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="שם המסיבה"
+            android:textSize="27sp"
+            android:textStyle="bold"
+            android:textColor="#D82F73"
+            android:gravity="center"
+            android:padding="15dp" />
+
+        <TextView
+            android:id="@+id/partyDateText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="תאריך המסיבה"
+            android:textSize="19sp"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:padding="10dp" />
+
+        <TextView
+            android:id="@+id/partyLocationText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="מיקום המסיבה"
+            android:textSize="19sp"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:padding="10dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="כאן מתחילים לתכנן 💗"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:layout_marginTop="30dp"
+            android:layout_marginBottom="25dp" />
+
+        <Button
+            android:id="@+id/guestsTasksButton"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:background="@drawable/pink_button"
+            android:backgroundTint="@null"
+            android:text="ניהול אורחים ומשימות"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/budgetButton"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/pink_button"
+            android:backgroundTint="@null"
+            android:text="ניהול תקציב"
+            android:textSize="17sp"
+            android:textColor="#FFFFFF"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/aiButton"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="15dp"
+            android:background="@drawable/pink_button"
+            android:backgroundTint="@null"
+            android:text="העוזרת החכמה ✨"
+            android:textSize="17sp"
+            android:textColor="#FFFFFF"
+            android:textAllCaps="false" />
+
+        <TextView
+            android:id="@+id/backButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="25dp"
+            android:layout_marginBottom="20dp"
+            android:text="חזרה למסיבות"
+            android:textColor="#D82F73"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="10dp" />
+
+    </LinearLayout>
+
+</ScrollView>

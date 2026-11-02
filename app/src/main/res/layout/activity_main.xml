@@ -9,7 +9,7 @@
         android:id="@+id/backgroundImage"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:src="@drawable/party_background"
+        android:src="@drawable/party"
         android:scaleType="centerCrop"
         android:contentDescription="@null" />
 
@@ -22,9 +22,15 @@
         android:gravity="center_horizontal"
         android:paddingStart="35dp"
         android:paddingEnd="35dp"
-        android:layout_marginTop="480dp">
+        android:layout_marginTop="600dp">
 
         <!-- שם משתמש -->
+
+        <!-- סיסמה -->
+
+        <!-- כפתור התחברות -->
+
+        <!-- הרשמה -->
         <EditText
             android:id="@+id/usernameEditText"
             android:layout_width="match_parent"
@@ -38,44 +44,41 @@
             android:textColorHint="#C98BAA"
             android:textSize="16sp" />
 
-        <!-- סיסמה -->
         <EditText
             android:id="@+id/passwordEditText"
             android:layout_width="match_parent"
             android:layout_height="47dp"
+            android:layout_marginBottom="15dp"
+            android:background="@drawable/edit_text_background"
+            android:gravity="center"
             android:hint="סיסמה"
-            android:textSize="16sp"
+            android:inputType="textPassword"
             android:textColor="#B92D68"
             android:textColorHint="#C98BAA"
-            android:gravity="center"
-            android:background="@drawable/edit_text_background"
-            android:inputType="textPassword"
-            android:layout_marginBottom="15dp" />
+            android:textSize="16sp" />
 
-        <!-- כפתור התחברות -->
         <Button
             android:id="@+id/loginButton"
             android:layout_width="match_parent"
             android:layout_height="47dp"
+            android:background="@drawable/pink_button"
             android:text="התחברות  →"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
             android:textAllCaps="false"
-            android:background="@drawable/pink_button" />
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-        <!-- הרשמה -->
         <TextView
             android:id="@+id/registerTextView"
             android:layout_width="wrap_content"
-            android:layout_height="55dp"
-            android:text="אין לך חשבון?  הרשמה"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:textColor="#D82F73"
-            android:gravity="center"
+            android:layout_height="40dp"
             android:clickable="true"
-            android:focusable="true" />
+            android:focusable="true"
+            android:gravity="center"
+            android:text="אין לך חשבון?  הרשמה"
+            android:textColor="#D82F73"
+            android:textSize="17sp"
+            android:textStyle="bold" />
 
     </LinearLayout>
 

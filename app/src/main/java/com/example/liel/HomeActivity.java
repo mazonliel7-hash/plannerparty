@@ -1,9 +1,9 @@
+
 package com.example.liel;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -15,6 +15,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -22,9 +24,15 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.HashMap;
 import java.util.Map;
 
 public class HomeActivity extends AppCompatActivity {
@@ -50,22 +58,19 @@ public class HomeActivity extends AppCompatActivity {
 
         FirebaseUser user = auth.getCurrentUser();
 
-        // מוודאים שיש משתמש מחובר
         if (user == null) {
             startActivity(new Intent(this, MainActivity.class));
             finish();
             return;
         }
 
-        // כפתור יצירת מסיבה
         findViewById(R.id.createPartyButton)
                 .setOnClickListener(v -> showCreatePartyDialog());
 
-        // טעינת המסיבות של המשתמש
         loadParties(user.getUid());
     }
 
-    // חלון יצירת מסיבה
+    // יצירת מסיבה חדשה
     private void showCreatePartyDialog() {
 
         LinearLayout form = new LinearLayout(this);
@@ -88,7 +93,6 @@ public class HomeActivity extends AppCompatActivity {
         form.addView(dateInput);
         form.addView(locationInput);
 
-        // בחירת תאריך מתוך לוח שנה
         dateInput.setOnClickListener(v -> {
 
             Calendar calendar = Calendar.getInstance();
@@ -96,6 +100,7 @@ public class HomeActivity extends AppCompatActivity {
             DatePickerDialog datePicker = new DatePickerDialog(
                     HomeActivity.this,
                     (view, year, month, day) -> {
+
                         String date = String.format(
                                 Locale.getDefault(),
                                 "%02d/%02d/%04d",
@@ -128,14 +133,14 @@ public class HomeActivity extends AppCompatActivity {
 
             saveButton.setOnClickListener(v -> {
 
-                String partyName = partyNameInput
-                        .getText().toString().trim();
+                String partyName =
+                        partyNameInput.getText().toString().trim();
 
-                String partyDate = dateInput
-                        .getText().toString().trim();
+                String partyDate =
+                        dateInput.getText().toString().trim();
 
-                String partyLocation = locationInput
-                        .getText().toString().trim();
+                String partyLocation =
+                        locationInput.getText().toString().trim();
 
                 if (partyName.isEmpty() || partyDate.isEmpty()) {
                     Toast.makeText(
@@ -143,7 +148,6 @@ public class HomeActivity extends AppCompatActivity {
                             "נא למלא שם ותאריך למסיבה",
                             Toast.LENGTH_SHORT
                     ).show();
-
                     return;
                 }
 
@@ -158,7 +162,6 @@ public class HomeActivity extends AppCompatActivity {
                     return;
                 }
 
-                // הנתונים שישמרו ב-Firestore
                 Map<String, Object> party = new HashMap<>();
                 party.put("name", partyName);
                 party.put("date", partyDate);
@@ -166,7 +169,6 @@ public class HomeActivity extends AppCompatActivity {
                 party.put("ownerId", user.getUid());
                 party.put("createdAt", FieldValue.serverTimestamp());
 
-                // שמירה תחת המשתמש המחובר
                 db.collection("users")
                         .document(user.getUid())
                         .collection("parties")
@@ -180,7 +182,6 @@ public class HomeActivity extends AppCompatActivity {
                             ).show();
 
                             dialog.dismiss();
-
                         })
                         .addOnFailureListener(e -> {
 
@@ -197,7 +198,7 @@ public class HomeActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    // טעינת המסיבות מתוך Firebase
+    // טעינת המסיבות וחלוקה למסיבות קרובות ולעבר
     private void loadParties(String userId) {
 
         partiesListener = db.collection("users")
@@ -220,88 +221,363 @@ public class HomeActivity extends AppCompatActivity {
 
                     partiesContainer.removeAllViews();
 
-                    boolean isEmpty = snapshots.isEmpty();
+                    if (snapshots.isEmpty()) {
+                        emptyPartiesText.setVisibility(View.VISIBLE);
+                        return;
+                    }
 
-                    emptyPartiesText.setVisibility(
-                            isEmpty ? View.VISIBLE : View.GONE
-                    );
+                    emptyPartiesText.setVisibility(View.GONE);
 
-                    for (DocumentSnapshot document
-                            : snapshots.getDocuments()) {
+                    List<DocumentSnapshot> upcomingParties =
+                            new ArrayList<>();
 
-                        String name = document.getString("name");
-                        String date = document.getString("date");
-                        String location = document.getString("location");
+                    List<DocumentSnapshot> pastParties =
+                            new ArrayList<>();
 
-                        if (name == null) {
-                            name = "מסיבה ללא שם";
+                    Date today = getToday();
+
+                    for (DocumentSnapshot document :
+                            snapshots.getDocuments()) {
+
+                        String dateString = document.getString("date");
+                        Date partyDate = parseDate(dateString);
+
+                        if (partyDate == null ||
+                                !partyDate.before(today)) {
+
+                            upcomingParties.add(document);
+
+                        } else {
+
+                            pastParties.add(document);
                         }
+                    }
 
-                        if (date == null) {
-                            date = "לא הוגדר תאריך";
+                    // מסיבות קרובות: מהקרובה ביותר לרחוקה ביותר
+                    Collections.sort(upcomingParties,
+                            (a, b) -> compareDates(a, b, false));
+
+                    // מסיבות שעברו: מהאחרונה לישנה ביותר
+                    Collections.sort(pastParties,
+                            (a, b) -> compareDates(a, b, true));
+
+                    if (!upcomingParties.isEmpty()) {
+
+                        addSectionTitle("🎉 המסיבות הקרובות");
+
+                        for (DocumentSnapshot document :
+                                upcomingParties) {
+
+                            addPartyCard(document);
                         }
+                    }
 
-                        if (location == null || location.isEmpty()) {
-                            location = "לא הוגדר מיקום";
+                    if (!pastParties.isEmpty()) {
+
+                        addSectionTitle("📁 מסיבות שעברו");
+
+                        for (DocumentSnapshot document : pastParties) {
+
+                            addPartyCard(document);
                         }
-
-                        // יצירת כרטיס המסיבה
-                        TextView partyCard = new TextView(this);
-
-                        partyCard.setText(
-                                name
-                                        + "\nתאריך: " + date
-                                        + "\nמיקום: " + location
-                        );
-
-                        partyCard.setTextSize(17);
-                        partyCard.setTextColor(0xFFB92D68);
-                        partyCard.setTypeface(null, android.graphics.Typeface.BOLD);
-                        partyCard.setGravity(android.view.Gravity.RIGHT);
-                        partyCard.setPadding(30, 25, 30, 25);
-                        partyCard.setBackgroundResource(
-                                R.drawable.edit_text_background
-                        );
-
-                        LinearLayout.LayoutParams params =
-                                new LinearLayout.LayoutParams(
-                                        LinearLayout.LayoutParams.MATCH_PARENT,
-                                        LinearLayout.LayoutParams.WRAP_CONTENT
-                                );
-
-                        params.bottomMargin = 20;
-
-                        partyCard.setLayoutParams(params);
-
-                        // שמירת פרטי המסיבה לצורך פתיחת המסך שלה
-                        final String savedName = name;
-                        final String savedDate = date;
-                        final String savedLocation = location;
-                        final String savedPartyId = document.getId();
-
-                        // לחיצה על כרטיס המסיבה
-                        partyCard.setClickable(true);
-
-                        partyCard.setOnClickListener(v -> {
-
-                            android.content.Intent intent =
-                                    new android.content.Intent(
-                                            HomeActivity.this,
-                                            PartyActivity.class
-                                    );
-
-                            intent.putExtra("partyId", savedPartyId);
-                            intent.putExtra("partyName", savedName);
-                            intent.putExtra("partyDate", savedDate);
-                            intent.putExtra("partyLocation", savedLocation);
-
-                            startActivity(intent);
-                        });
-
-                        // הוספת הכרטיס לרשימה
-                        partiesContainer.addView(partyCard);
                     }
                 });
+    }
+
+    // קבלת התאריך של היום ללא שעה
+    private Date getToday() {
+
+        Calendar calendar = Calendar.getInstance();
+
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+
+        return calendar.getTime();
+    }
+
+    // המרת תאריך מהפורמט שנשמר ב-Firebase
+    private Date parseDate(String dateString) {
+
+        if (dateString == null || dateString.isEmpty()) {
+            return null;
+        }
+
+        SimpleDateFormat format =
+                new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+
+        format.setLenient(false);
+
+        try {
+            return format.parse(dateString);
+        } catch (ParseException e) {
+            return null;
+        }
+    }
+
+    // השוואת תאריכים לצורך מיון
+    private int compareDates(
+            DocumentSnapshot first,
+            DocumentSnapshot second,
+            boolean reverse) {
+
+        Date firstDate = parseDate(first.getString("date"));
+        Date secondDate = parseDate(second.getString("date"));
+
+        if (firstDate == null && secondDate == null) {
+            return 0;
+        }
+
+        if (firstDate == null) {
+            return 1;
+        }
+
+        if (secondDate == null) {
+            return -1;
+        }
+
+        return reverse
+                ? secondDate.compareTo(firstDate)
+                : firstDate.compareTo(secondDate);
+    }
+
+    // כותרת של כל אזור
+    private void addSectionTitle(String title) {
+
+        TextView sectionTitle = new TextView(this);
+
+        sectionTitle.setText(title);
+        sectionTitle.setTextSize(21);
+        sectionTitle.setTextColor(0xFFB92D68);
+        sectionTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        sectionTitle.setGravity(Gravity.RIGHT);
+        sectionTitle.setPadding(5, 30, 5, 15);
+        sectionTitle.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        partiesContainer.addView(sectionTitle);
+    }
+
+    // יצירת כרטיס מסיבה
+    private void addPartyCard(DocumentSnapshot document) {
+
+        String name = document.getString("name");
+        String date = document.getString("date");
+        String location = document.getString("location");
+
+        if (name == null) {
+            name = "מסיבה ללא שם";
+        }
+
+        if (date == null) {
+            date = "לא הוגדר תאריך";
+        }
+
+        if (location == null || location.isEmpty()) {
+            location = "לא הוגדר מיקום";
+        }
+
+        final String savedName = name;
+        final String savedDate = date;
+        final String savedLocation = location;
+        final String savedPartyId = document.getId();
+
+        LinearLayout cardRow = new LinearLayout(this);
+        cardRow.setOrientation(LinearLayout.HORIZONTAL);
+        cardRow.setGravity(Gravity.CENTER_VERTICAL);
+        cardRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        LinearLayout.LayoutParams rowParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        rowParams.bottomMargin = 20;
+        cardRow.setLayoutParams(rowParams);
+
+        // פרטי המסיבה
+        TextView partyCard = new TextView(this);
+
+        partyCard.setText(
+                savedName
+                        + "\nתאריך: " + savedDate
+                        + "\nמיקום: " + savedLocation
+        );
+
+        partyCard.setTextSize(17);
+        partyCard.setTextColor(0xFFB92D68);
+        partyCard.setTypeface(null, android.graphics.Typeface.BOLD);
+        partyCard.setGravity(Gravity.RIGHT);
+        partyCard.setPadding(30, 25, 30, 25);
+        partyCard.setBackgroundResource(
+                R.drawable.edit_text_background
+        );
+
+        LinearLayout.LayoutParams cardParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1
+                );
+
+        partyCard.setLayoutParams(cardParams);
+        partyCard.setClickable(true);
+
+        // פתיחת המסיבה גם אם התאריך שלה עבר
+        partyCard.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    HomeActivity.this,
+                    PartyActivity.class
+            );
+
+            intent.putExtra("partyId", savedPartyId);
+            intent.putExtra("partyName", savedName);
+            intent.putExtra("partyDate", savedDate);
+            intent.putExtra("partyLocation", savedLocation);
+
+            startActivity(intent);
+        });
+
+        // כפתור מחיקה
+        TextView deleteButton = new TextView(this);
+
+        deleteButton.setText("מחיקה");
+        deleteButton.setTextSize(14);
+        deleteButton.setTextColor(0xFFB92D68);
+        deleteButton.setGravity(Gravity.CENTER);
+        deleteButton.setPadding(15, 20, 15, 20);
+        deleteButton.setBackgroundResource(
+                R.drawable.edit_text_background
+        );
+
+        LinearLayout.LayoutParams deleteParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        deleteParams.setMargins(10, 0, 0, 0);
+        deleteButton.setLayoutParams(deleteParams);
+
+        deleteButton.setOnClickListener(v ->
+                confirmDeleteParty(document)
+        );
+
+        cardRow.addView(partyCard);
+        cardRow.addView(deleteButton);
+
+        partiesContainer.addView(cardRow);
+    }
+
+    // אישור לפני מחיקת מסיבה וכל הנתונים שלה
+    private void confirmDeleteParty(DocumentSnapshot document) {
+
+        String name = document.getString("name");
+
+        if (name == null) {
+            name = "המסיבה";
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("מחיקת מסיבה")
+                .setMessage(
+                        "את בטוחה שברצונך למחוק את \""
+                                + name + "\"?\n\n"
+                                + "גם רשימת האורחים והמשימות של המסיבה יימחקו."
+                )
+                .setPositiveButton("כן, למחוק", (dialog, which) -> {
+
+                    FirebaseUser user = auth.getCurrentUser();
+
+                    if (user == null) {
+                        Toast.makeText(
+                                this,
+                                "יש להתחבר מחדש",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                        return;
+                    }
+
+                    String userId = user.getUid();
+                    String partyId = document.getId();
+
+                    // כתובת המסיבה ב-Firebase
+                    com.google.firebase.firestore.DocumentReference partyRef =
+                            db.collection("users")
+                                    .document(userId)
+                                    .collection("parties")
+                                    .document(partyId);
+
+                    // קודם טוענים את האורחים
+                    partyRef.collection("guests")
+                            .get()
+                            .addOnSuccessListener(guests -> {
+
+                                // לאחר מכן טוענים את המשימות
+                                partyRef.collection("tasks")
+                                        .get()
+                                        .addOnSuccessListener(tasks -> {
+
+                                            List<Task<Void>> deleteTasks =
+                                                    new ArrayList<>();
+
+                                            // מחיקת האורחים
+                                            for (DocumentSnapshot guest : guests) {
+                                                deleteTasks.add(
+                                                        guest.getReference().delete()
+                                                );
+                                            }
+
+                                            // מחיקת המשימות
+                                            for (DocumentSnapshot task : tasks) {
+                                                deleteTasks.add(
+                                                        task.getReference().delete()
+                                                );
+                                            }
+
+                                            // מחכים שכל המחיקות יסתיימו
+                                            Tasks.whenAll(deleteTasks)
+                                                    .addOnSuccessListener(unused -> {
+
+                                                        // מחיקת המסיבה עצמה
+                                                        partyRef.delete()
+                                                                .addOnSuccessListener(result ->
+                                                                        Toast.makeText(
+                                                                                this,
+                                                                                "המסיבה וכל הנתונים שלה נמחקו 💗",
+                                                                                Toast.LENGTH_SHORT
+                                                                        ).show()
+                                                                )
+                                                                .addOnFailureListener(e ->
+                                                                        showDeleteError()
+                                                                );
+                                                    })
+                                                    .addOnFailureListener(e ->
+                                                            showDeleteError()
+                                                    );
+                                        })
+                                        .addOnFailureListener(e ->
+                                                showDeleteError()
+                                        );
+                            })
+                            .addOnFailureListener(e ->
+                                    showDeleteError()
+                            );
+                })
+                .setNegativeButton("ביטול", null)
+                .show();
+    }
+
+    // הודעת שגיאה במקרה שהמחיקה נכשלה
+    private void showDeleteError() {
+
+        Toast.makeText(
+                this,
+                "לא הצלחנו למחוק את המסיבה. נסי שוב.",
+                Toast.LENGTH_LONG
+        ).show();
     }
 
     @Override

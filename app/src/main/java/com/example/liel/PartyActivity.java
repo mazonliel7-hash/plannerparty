@@ -1,7 +1,8 @@
+
 package com.example.liel;
 
+import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -14,71 +15,68 @@ public class PartyActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_party);
 
-        TextView partyNameText =
-                findViewById(R.id.partyNameText);
+        TextView partyNameText = findViewById(R.id.partyNameText);
+        TextView partyDateText = findViewById(R.id.partyDateText);
+        TextView partyLocationText = findViewById(R.id.partyLocationText);
 
-        TextView partyDateText =
-                findViewById(R.id.partyDateText);
+        String name = getIntent().getStringExtra("partyName");
+        String date = getIntent().getStringExtra("partyDate");
+        String location = getIntent().getStringExtra("partyLocation");
 
-        TextView partyLocationText =
-                findViewById(R.id.partyLocationText);
+        partyNameText.setText(name == null ? "המסיבה שלי" : name);
 
-        String name =
-                getIntent().getStringExtra("partyName");
+        partyDateText.setText("📅 תאריך: " +
+                (date == null ? "לא הוגדר" : date));
 
-        String date =
-                getIntent().getStringExtra("partyDate");
+        partyLocationText.setText("📍 מיקום: " +
+                (location == null || location.isEmpty()
+                        ? "לא הוגדר" : location));
 
-        String location =
-                getIntent().getStringExtra("partyLocation");
-
-        partyNameText.setText(
-                name == null ? "המסיבה שלי" : name
-        );
-
-        partyDateText.setText(
-                "📅 תאריך: " +
-                        (date == null ? "לא הוגדר" : date)
-        );
-
-        partyLocationText.setText(
-                "📍 מיקום: " +
-                        (location == null || location.isEmpty()
-                                ? "לא הוגדר"
-                                : location)
-        );
-
-        Button backButton =
-                findViewById(R.id.backButton);
-
+        TextView backButton = findViewById(R.id.backButton);
         backButton.setOnClickListener(v -> finish());
 
-        // נחבר את הכפתורים למסכים שלהם בשלבים הבאים
-        findViewById(R.id.guestsTasksButton)
-                .setOnClickListener(v ->
-                        Toast.makeText(
-                                this,
-                                "נחבר את ניהול האורחים והמשימות בשלב הבא",
-                                Toast.LENGTH_SHORT
-                        ).show()
-                );
+        findViewById(R.id.guestsTasksButton).setOnClickListener(v -> {
 
-        findViewById(R.id.budgetButton)
-                .setOnClickListener(v ->
-                        Toast.makeText(
-                                this,
-                                "נחבר את ניהול התקציב בשלב הבא",
-                                Toast.LENGTH_SHORT
-                        ).show()
-                );
+            Intent intent = new Intent(
+                    PartyActivity.this,
+                    GuestsTasksActivity.class
+            );
 
-        findViewById(R.id.aiButton)
-                .setOnClickListener(v ->
-                        Toast.makeText(
-                                this,
-                                "נחבר את העוזרת החכמה בהמשך",
-                                Toast.LENGTH_SHORT
-                        ).show()
-                );
+            intent.putExtra(
+                    "partyId",
+                    getIntent().getStringExtra("partyId")
+            );
+
+            intent.putExtra(
+                    "partyName",
+                    getIntent().getStringExtra("partyName")
+            );
+
+            startActivity(intent);
+        });
+
+        // מעבר למסך ניהול התקציב
+        findViewById(R.id.budgetButton).setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    PartyActivity.this,
+                    BudgetActivity.class
+            );
+
+            intent.putExtra(
+                    "partyId",
+                    getIntent().getStringExtra("partyId")
+            );
+
+            startActivity(intent);
+        });
+
+        findViewById(R.id.aiButton).setOnClickListener(v ->
+                Toast.makeText(
+                        this,
+                        "נחבר את העוזרת החכמה בהמשך",
+                        Toast.LENGTH_SHORT
+                ).show()
+        );
     }
 }

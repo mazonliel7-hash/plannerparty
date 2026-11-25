@@ -1,4 +1,3 @@
-
 package com.example.liel;
 
 import android.app.AlertDialog;
@@ -6,14 +5,19 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -21,6 +25,7 @@ import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class BudgetActivity extends AppCompatActivity {
 
@@ -28,19 +33,33 @@ public class BudgetActivity extends AppCompatActivity {
     private String userId;
     private String partyId;
 
-    private TextView budgetText;
-    private TextView spentText;
-    private TextView remainingText;
+    private TextView budgetText, spentText, remainingText;
+    private TextView budgetStatusText, emptyExpensesText;
+    private TextView categorySummaryText;
+
+    private ProgressBar budgetProgress;
     private LinearLayout expensesContainer;
 
     private double budget = 0;
     private double spent = 0;
+
+    private final Map<String, Double> categoryTotals = new TreeMap<>();
 
     private ListenerRegistration budgetListener;
     private ListenerRegistration expensesListener;
 
     private final int PINK = Color.parseColor("#E83E82");
     private final int DARK_PINK = Color.parseColor("#B92D68");
+
+    private final String[] categories = {
+            "אוכל",
+            "שתייה",
+            "מוזיקה",
+            "עיצוב וקישוטים",
+            "מקום",
+            "בידור ואטרקציות",
+            "אחר"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,13 +74,18 @@ public class BudgetActivity extends AppCompatActivity {
         }
 
         userId = FirebaseAuth.getInstance()
-                .getCurrentUser().getUid();
+                .getCurrentUser()
+                .getUid();
 
         partyId = getIntent().getStringExtra("partyId");
 
         if (partyId == null || partyId.isEmpty()) {
-            Toast.makeText(this, "לא נמצאה מסיבה",
-                    Toast.LENGTH_SHORT).show();
+            Toast.makeText(
+                    this,
+                    "לא נמצאה מסיבה",
+                    Toast.LENGTH_SHORT
+            ).show();
+
             finish();
             return;
         }
@@ -69,7 +93,13 @@ public class BudgetActivity extends AppCompatActivity {
         budgetText = findViewById(R.id.budgetText);
         spentText = findViewById(R.id.spentText);
         remainingText = findViewById(R.id.remainingText);
+
+        budgetProgress = findViewById(R.id.budgetProgress);
+        budgetStatusText = findViewById(R.id.budgetStatusText);
+
+        emptyExpensesText = findViewById(R.id.emptyExpensesText);
         expensesContainer = findViewById(R.id.expensesContainer);
+        categorySummaryText = findViewById(R.id.categorySummaryText);
 
         findViewById(R.id.setBudgetButton)
                 .setOnClickListener(v -> showBudgetDialog());
@@ -84,9 +114,7 @@ public class BudgetActivity extends AppCompatActivity {
         loadExpenses();
     }
 
-    private com.google.firebase.firestore.DocumentReference
-    getPartyDocument() {
-
+    private DocumentReference getPartyDocument() {
         return db.collection("users")
                 .document(userId)
                 .collection("parties")
@@ -94,128 +122,260 @@ public class BudgetActivity extends AppCompatActivity {
     }
 
     private void loadBudget() {
-
         budgetListener = getPartyDocument()
                 .addSnapshotListener((snapshot, error) -> {
 
-                    if (error != null || snapshot == null) return;
+                    if (error != null) {
+                        Toast.makeText(
+                                this,
+                                "לא ניתן לטעון את התקציב",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                        return;
+                    }
 
-                    Double savedBudget = snapshot.getDouble("budget");
+                    if (snapshot != null && snapshot.exists()) {
+                        Object value = snapshot.get("budget");
 
-                    budget = savedBudget == null ? 0 : savedBudget;
+                        if (value instanceof Number) {
+                            budget = ((Number) value).doubleValue();
+                        } else {
+                            budget = 0;
+                        }
 
-                    updateSummary();
+                        updateBudgetDisplay();
+                    }
                 });
     }
 
     private void loadExpenses() {
-
         expensesListener = getPartyDocument()
                 .collection("expenses")
                 .addSnapshotListener((snapshots, error) -> {
 
                     if (error != null) {
-                        Toast.makeText(this,
-                                "לא ניתן לטעון הוצאות",
-                                Toast.LENGTH_SHORT).show();
+                        Toast.makeText(
+                                this,
+                                "לא ניתן לטעון את ההוצאות",
+                                Toast.LENGTH_SHORT
+                        ).show();
                         return;
                     }
 
-                    if (snapshots == null) return;
-
                     expensesContainer.removeAllViews();
+                    categoryTotals.clear();
                     spent = 0;
+
+                    if (snapshots == null || snapshots.isEmpty()) {
+                        emptyExpensesText.setVisibility(View.VISIBLE);
+                        categorySummaryText.setText("עדיין אין הוצאות");
+
+                        updateBudgetDisplay();
+                        return;
+                    }
+
+                    emptyExpensesText.setVisibility(View.GONE);
 
                     for (DocumentSnapshot document :
                             snapshots.getDocuments()) {
 
-                        Double amount = document.getDouble("amount");
-
-                        if (amount != null) {
-                            spent += amount;
-                        }
-
                         String name = document.getString("name");
 
-                        if (name == null) continue;
+                        if (name == null || name.trim().isEmpty()) {
+                            name = "הוצאה";
+                        }
 
-                        addExpenseCard(document, name,
-                                amount == null ? 0 : amount);
+                        Object amountValue = document.get("amount");
+
+                        double amount = amountValue instanceof Number
+                                ? ((Number) amountValue).doubleValue()
+                                : 0;
+
+                        String category =
+                                document.getString("category");
+
+                        if (category == null ||
+                                category.trim().isEmpty()) {
+                            category = "אחר";
+                        }
+
+                        spent += amount;
+
+                        categoryTotals.put(
+                                category,
+                                categoryTotals.getOrDefault(
+                                        category,
+                                        0.0
+                                ) + amount
+                        );
+
+                        addExpenseCard(
+                                document,
+                                name,
+                                amount,
+                                category
+                        );
                     }
 
-                    updateSummary();
+                    updateCategorySummary();
+                    updateBudgetDisplay();
                 });
     }
 
-    private void updateSummary() {
-
+    private void updateBudgetDisplay() {
         double remaining = budget - spent;
 
-        budgetText.setText("תקציב כולל: " +
-                String.format("%.2f", budget) + " ₪");
+        budgetText.setText(
+                String.format("תקציב כולל: %.2f ₪", budget)
+        );
 
-        spentText.setText("סך ההוצאות: " +
-                String.format("%.2f", spent) + " ₪");
+        spentText.setText(
+                String.format("סך ההוצאות: %.2f ₪", spent)
+        );
 
-        remainingText.setText("יתרה: " +
-                String.format("%.2f", remaining) + " ₪");
+        remainingText.setText(
+                String.format("יתרה: %.2f ₪", remaining)
+        );
 
-        remainingText.setTextColor(
-                remaining < 0 ? Color.RED : DARK_PINK
+        int progress = 0;
+
+        if (budget > 0) {
+            progress = (int) Math.min(
+                    100,
+                    Math.round((spent / budget) * 100)
+            );
+        }
+
+        budgetProgress.setProgress(progress);
+
+        if (budget <= 0) {
+
+            budgetStatusText.setText(
+                    "הגדירי תקציב כדי לעקוב אחרי ההוצאות"
+            );
+
+            budgetStatusText.setTextColor(DARK_PINK);
+
+        } else if (spent >= budget) {
+
+            budgetStatusText.setText(
+                    "שימי לב! הגעת לתקציב או חרגת ממנו"
+            );
+
+            budgetStatusText.setTextColor(Color.RED);
+
+        } else if (spent >= budget * 0.8) {
+
+            budgetStatusText.setText(
+                    "ניצלת כבר 80% מהתקציב"
+            );
+
+            budgetStatusText.setTextColor(DARK_PINK);
+
+        } else {
+
+            budgetStatusText.setText(
+                    "התקציב שלך בשליטה 💗"
+            );
+
+            budgetStatusText.setTextColor(PINK);
+        }
+    }
+
+    private void updateCategorySummary() {
+        if (categoryTotals.isEmpty()) {
+            categorySummaryText.setText("עדיין אין הוצאות");
+            return;
+        }
+
+        StringBuilder builder = new StringBuilder();
+
+        for (Map.Entry<String, Double> entry :
+                categoryTotals.entrySet()) {
+
+            builder.append(entry.getKey())
+                    .append(": ")
+                    .append(String.format(
+                            "%.2f ₪",
+                            entry.getValue()
+                    ))
+                    .append("\n");
+        }
+
+        categorySummaryText.setText(
+                builder.toString().trim()
         );
     }
 
     private void showBudgetDialog() {
-
         EditText input = new EditText(this);
 
-        input.setHint("הכניסי תקציב בשקלים");
-        input.setInputType(InputType.TYPE_CLASS_NUMBER |
-                InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setHint("הכניסי סכום תקציב");
 
-        input.setTextDirection(android.view.View.TEXT_DIRECTION_LTR);
+        input.setInputType(
+                InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_FLAG_DECIMAL
+        );
+
+        input.setText(
+                budget > 0 ? String.valueOf(budget) : ""
+        );
+
+        input.setGravity(Gravity.CENTER);
+        input.setTextColor(DARK_PINK);
 
         new AlertDialog.Builder(this)
-                .setTitle("הגדרת תקציב 💗")
+                .setTitle("הגדרת תקציב")
                 .setView(input)
                 .setPositiveButton("שמירה", (dialog, which) -> {
 
-                    String value = input.getText().toString().trim();
+                    String text = input.getText()
+                            .toString()
+                            .trim();
 
-                    if (value.isEmpty()) {
-                        Toast.makeText(this,
-                                "נא להזין תקציב",
-                                Toast.LENGTH_SHORT).show();
+                    if (text.isEmpty()) {
+                        Toast.makeText(
+                                this,
+                                "הכניסי סכום תקין",
+                                Toast.LENGTH_SHORT
+                        ).show();
                         return;
                     }
 
                     try {
-                        double newBudget = Double.parseDouble(value);
+                        double newBudget =
+                                Double.parseDouble(text);
 
-                        if (newBudget <= 0) {
-                            Toast.makeText(this,
-                                    "התקציב חייב להיות גדול מאפס",
-                                    Toast.LENGTH_SHORT).show();
+                        if (newBudget < 0) {
+                            Toast.makeText(
+                                    this,
+                                    "התקציב לא יכול להיות שלילי",
+                                    Toast.LENGTH_SHORT
+                            ).show();
                             return;
                         }
 
                         getPartyDocument()
                                 .update("budget", newBudget)
                                 .addOnSuccessListener(unused ->
-                                        Toast.makeText(this,
-                                                "התקציב נשמר בהצלחה 💗",
-                                                Toast.LENGTH_SHORT).show()
-                                )
+                                        Toast.makeText(
+                                                this,
+                                                "התקציב נשמר",
+                                                Toast.LENGTH_SHORT
+                                        ).show())
                                 .addOnFailureListener(e ->
-                                        Toast.makeText(this,
+                                        Toast.makeText(
+                                                this,
                                                 "שמירת התקציב נכשלה",
-                                                Toast.LENGTH_SHORT).show()
-                                );
+                                                Toast.LENGTH_SHORT
+                                        ).show());
 
                     } catch (NumberFormatException e) {
-                        Toast.makeText(this,
-                                "סכום לא תקין",
-                                Toast.LENGTH_SHORT).show();
+                        Toast.makeText(
+                                this,
+                                "הכניסי סכום תקין",
+                                Toast.LENGTH_SHORT
+                        ).show();
                     }
                 })
                 .setNegativeButton("ביטול", null)
@@ -223,167 +383,329 @@ public class BudgetActivity extends AppCompatActivity {
     }
 
     private void showExpenseDialog() {
+        showExpenseForm(
+                null,
+                "",
+                "",
+                "אחר",
+                false
+        );
+    }
+
+    private void showEditExpenseDialog(
+            DocumentSnapshot document,
+            String name,
+            double amount,
+            String category) {
+
+        showExpenseForm(
+                document,
+                name,
+                String.valueOf(amount),
+                category,
+                true
+        );
+    }
+
+    private void showExpenseForm(
+            DocumentSnapshot document,
+            String oldName,
+            String oldAmount,
+            String oldCategory,
+            boolean editing) {
 
         LinearLayout layout = new LinearLayout(this);
-
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(45, 15, 45, 5);
+        layout.setPadding(30, 10, 30, 0);
 
         EditText nameInput = new EditText(this);
-        nameInput.setHint("על מה ההוצאה?");
+        nameInput.setHint("שם ההוצאה");
+        nameInput.setText(oldName);
+        nameInput.setTextColor(DARK_PINK);
+
+        layout.addView(nameInput);
 
         EditText amountInput = new EditText(this);
         amountInput.setHint("סכום בשקלים");
+
         amountInput.setInputType(
                 InputType.TYPE_CLASS_NUMBER |
                         InputType.TYPE_NUMBER_FLAG_DECIMAL
         );
 
-        layout.addView(nameInput);
+        amountInput.setText(oldAmount);
+        amountInput.setTextColor(DARK_PINK);
+
         layout.addView(amountInput);
 
-        new AlertDialog.Builder(this)
-                .setTitle("הוספת הוצאה 💸")
+        TextView categoryLabel = new TextView(this);
+        categoryLabel.setText("קטגוריה");
+        categoryLabel.setTextColor(DARK_PINK);
+        categoryLabel.setTextSize(16);
+        categoryLabel.setPadding(0, 12, 0, 6);
+
+        layout.addView(categoryLabel);
+
+        Spinner categorySpinner = new Spinner(this);
+
+        ArrayAdapter<String> adapter =
+                new ArrayAdapter<>(
+                        this,
+                        android.R.layout.simple_spinner_item,
+                        categories
+                );
+
+        adapter.setDropDownViewResource(
+                android.R.layout.simple_spinner_dropdown_item
+        );
+
+        categorySpinner.setAdapter(adapter);
+
+        int selected = 0;
+
+        for (int i = 0; i < categories.length; i++) {
+            if (categories[i].equals(oldCategory)) {
+                selected = i;
+                break;
+            }
+        }
+
+        categorySpinner.setSelection(selected);
+        layout.addView(categorySpinner);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(
+                        editing
+                                ? "עריכת הוצאה"
+                                : "הוספת הוצאה"
+                )
                 .setView(layout)
-                .setPositiveButton("הוספה", (dialog, which) -> {
+                .setPositiveButton("שמירה", null)
+                .setNegativeButton("ביטול", null)
+                .create();
+
+        dialog.setOnShowListener(d ->
+                dialog.getButton(
+                        AlertDialog.BUTTON_POSITIVE
+                ).setOnClickListener(v -> {
 
                     String name = nameInput.getText()
-                            .toString().trim();
+                            .toString()
+                            .trim();
 
-                    String amountString = amountInput.getText()
-                            .toString().trim();
+                    String amountText = amountInput.getText()
+                            .toString()
+                            .trim();
 
-                    if (name.isEmpty() || amountString.isEmpty()) {
-                        Toast.makeText(this,
-                                "נא למלא את כל השדות",
-                                Toast.LENGTH_SHORT).show();
+                    if (name.isEmpty() ||
+                            amountText.isEmpty()) {
+
+                        Toast.makeText(
+                                this,
+                                "מלאי שם וסכום",
+                                Toast.LENGTH_SHORT
+                        ).show();
+
                         return;
                     }
 
+                    double amount;
+
                     try {
-                        double amount =
-                                Double.parseDouble(amountString);
+                        amount = Double.parseDouble(
+                                amountText
+                        );
 
-                        if (amount <= 0) {
-                            Toast.makeText(this,
-                                    "הסכום חייב להיות גדול מאפס",
-                                    Toast.LENGTH_SHORT).show();
-                            return;
-                        }
+                    } catch (NumberFormatException e) {
 
-                        Map<String, Object> expense =
-                                new HashMap<>();
+                        Toast.makeText(
+                                this,
+                                "הכניסי סכום תקין",
+                                Toast.LENGTH_SHORT
+                        ).show();
 
-                        expense.put("name", name);
-                        expense.put("amount", amount);
-                        expense.put("createdAt",
-                                FieldValue.serverTimestamp());
+                        return;
+                    }
+
+                    if (amount <= 0) {
+                        Toast.makeText(
+                                this,
+                                "הסכום חייב להיות גדול מאפס",
+                                Toast.LENGTH_SHORT
+                        ).show();
+
+                        return;
+                    }
+
+                    String category =
+                            categorySpinner.getSelectedItem()
+                                    .toString();
+
+                    Map<String, Object> values =
+                            new HashMap<>();
+
+                    values.put("name", name);
+                    values.put("amount", amount);
+                    values.put("category", category);
+
+                    if (editing && document != null) {
+
+                        document.getReference()
+                                .update(values)
+                                .addOnSuccessListener(unused -> {
+                                    Toast.makeText(
+                                            this,
+                                            "ההוצאה עודכנה",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
+
+                                    dialog.dismiss();
+                                })
+                                .addOnFailureListener(e ->
+                                        Toast.makeText(
+                                                this,
+                                                "עדכון ההוצאה נכשל",
+                                                Toast.LENGTH_SHORT
+                                        ).show());
+
+                    } else {
+
+                        values.put(
+                                "createdAt",
+                                FieldValue.serverTimestamp()
+                        );
 
                         getPartyDocument()
                                 .collection("expenses")
-                                .add(expense)
-                                .addOnSuccessListener(reference ->
-                                        Toast.makeText(this,
-                                                "ההוצאה נוספה 💗",
-                                                Toast.LENGTH_SHORT).show()
-                                )
-                                .addOnFailureListener(e ->
-                                        Toast.makeText(this,
-                                                "הוספת ההוצאה נכשלה",
-                                                Toast.LENGTH_SHORT).show()
-                                );
+                                .add(values)
+                                .addOnSuccessListener(reference -> {
+                                    Toast.makeText(
+                                            this,
+                                            "ההוצאה נוספה",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
 
-                    } catch (NumberFormatException e) {
-                        Toast.makeText(this,
-                                "סכום לא תקין",
-                                Toast.LENGTH_SHORT).show();
+                                    dialog.dismiss();
+                                })
+                                .addOnFailureListener(e ->
+                                        Toast.makeText(
+                                                this,
+                                                "הוספת ההוצאה נכשלה",
+                                                Toast.LENGTH_SHORT
+                                        ).show());
                     }
-                })
-                .setNegativeButton("ביטול", null)
-                .show();
+                }));
+
+        dialog.show();
     }
 
     private void addExpenseCard(
             DocumentSnapshot document,
             String name,
-            double amount) {
+            double amount,
+            String category) {
 
-        LinearLayout row = new LinearLayout(this);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(24, 18, 24, 18);
 
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(20, 18, 20, 18);
-        row.setLayoutDirection(
-                android.view.View.LAYOUT_DIRECTION_RTL
-        );
-
-        row.setBackgroundResource(
+        card.setBackgroundResource(
                 R.drawable.edit_text_background
         );
 
-        LinearLayout.LayoutParams params =
+        LinearLayout.LayoutParams cardParams =
                 new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                 );
 
-        params.bottomMargin = 12;
-        row.setLayoutParams(params);
+        cardParams.setMargins(0, 0, 0, 14);
+        card.setLayoutParams(cardParams);
 
-        TextView expenseName = new TextView(this);
+        TextView details = new TextView(this);
 
-        expenseName.setText(name);
-        expenseName.setTextColor(DARK_PINK);
-        expenseName.setTextSize(17);
-
-        LinearLayout.LayoutParams nameParams =
-                new LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1
-                );
-
-        expenseName.setLayoutParams(nameParams);
-
-        TextView expenseAmount = new TextView(this);
-
-        expenseAmount.setText(
-                String.format("%.2f ₪", amount)
+        details.setText(
+                name + "\n" +
+                        category + "\n" +
+                        String.format("%.2f ₪", amount)
         );
 
-        expenseAmount.setTextColor(PINK);
-        expenseAmount.setTextSize(16);
+        details.setTextColor(DARK_PINK);
+        details.setTextSize(17);
+        details.setGravity(Gravity.CENTER);
 
-        TextView deleteButton = new TextView(this);
+        card.addView(details);
 
-        deleteButton.setText(" ✕ ");
-        deleteButton.setTextColor(PINK);
-        deleteButton.setTextSize(20);
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        buttons.setGravity(Gravity.CENTER);
+        buttons.setPadding(0, 10, 0, 0);
 
-        deleteButton.setOnClickListener(v ->
+        TextView editButton =
+                makeActionText("✎ עריכה", PINK);
 
-                new AlertDialog.Builder(this)
-                        .setTitle("מחיקת הוצאה")
-                        .setMessage("למחוק את ההוצאה " + name + "?")
-                        .setPositiveButton("מחיקה",
-                                (dialog, which) ->
-                                        document.getReference()
-                                                .delete()
-                                                .addOnFailureListener(e ->
-                                                        Toast.makeText(this,
-                                                                "המחיקה נכשלה",
-                                                                Toast.LENGTH_SHORT).show()
-                                                )
-                        )
-                        .setNegativeButton("ביטול", null)
-                        .show()
-        );
+        editButton.setOnClickListener(v ->
+                showEditExpenseDialog(
+                        document,
+                        name,
+                        amount,
+                        category
+                ));
 
-        row.addView(expenseName);
-        row.addView(expenseAmount);
-        row.addView(deleteButton);
+        TextView deleteButton =
+                makeActionText("✕ מחיקה", Color.RED);
 
-        expensesContainer.addView(row);
+        deleteButton.setOnClickListener(v -> {
+
+            new AlertDialog.Builder(this)
+                    .setTitle("מחיקת הוצאה")
+                    .setMessage(
+                            "למחוק את ההוצאה \"" +
+                                    name + "\"?"
+                    )
+                    .setPositiveButton(
+                            "מחיקה",
+                            (dialog, which) ->
+                                    document.getReference()
+                                            .delete()
+                                            .addOnSuccessListener(unused ->
+                                                    Toast.makeText(
+                                                            this,
+                                                            "ההוצאה נמחקה",
+                                                            Toast.LENGTH_SHORT
+                                                    ).show())
+                                            .addOnFailureListener(e ->
+                                                    Toast.makeText(
+                                                            this,
+                                                            "מחיקת ההוצאה נכשלה",
+                                                            Toast.LENGTH_SHORT
+                                                    ).show())
+                    )
+                    .setNegativeButton("ביטול", null)
+                    .show();
+        });
+
+        buttons.addView(editButton);
+        buttons.addView(deleteButton);
+
+        card.addView(buttons);
+
+        expensesContainer.addView(card);
+    }
+
+    private TextView makeActionText(
+            String text,
+            int color) {
+
+        TextView view = new TextView(this);
+
+        view.setText(text);
+        view.setTextColor(color);
+        view.setTextSize(16);
+        view.setGravity(Gravity.CENTER);
+        view.setPadding(24, 8, 24, 8);
+
+        return view;
     }
 
     @Override

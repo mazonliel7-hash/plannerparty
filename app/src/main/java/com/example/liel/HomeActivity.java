@@ -1,6 +1,8 @@
-
 package com.example.liel;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.content.Intent;
@@ -49,6 +51,18 @@ public class HomeActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home);
+
+        // שלב 6: בקשת הרשאה להתראות באנדרואיד 13 ומעלה
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+
+                requestPermissions(
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        101
+                );
+            }
+        }
 
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -175,6 +189,14 @@ public class HomeActivity extends AppCompatActivity {
                         .add(party)
                         .addOnSuccessListener(documentReference -> {
 
+                            // תזמון תזכורת ליום לפני המסיבה
+                            PartyReminder.schedule(
+                                    HomeActivity.this,
+                                    documentReference.getId(),
+                                    partyName,
+                                    partyDate
+                            );
+
                             Toast.makeText(
                                     HomeActivity.this,
                                     "המסיבה נשמרה בהצלחה! 💗",
@@ -254,12 +276,16 @@ public class HomeActivity extends AppCompatActivity {
                     }
 
                     // מסיבות קרובות: מהקרובה ביותר לרחוקה ביותר
-                    Collections.sort(upcomingParties,
-                            (a, b) -> compareDates(a, b, false));
+                    Collections.sort(
+                            upcomingParties,
+                            (a, b) -> compareDates(a, b, false)
+                    );
 
                     // מסיבות שעברו: מהאחרונה לישנה ביותר
-                    Collections.sort(pastParties,
-                            (a, b) -> compareDates(a, b, true));
+                    Collections.sort(
+                            pastParties,
+                            (a, b) -> compareDates(a, b, true)
+                    );
 
                     if (!upcomingParties.isEmpty()) {
 
@@ -350,7 +376,10 @@ public class HomeActivity extends AppCompatActivity {
         sectionTitle.setText(title);
         sectionTitle.setTextSize(21);
         sectionTitle.setTextColor(0xFFB92D68);
-        sectionTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        sectionTitle.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
         sectionTitle.setGravity(Gravity.RIGHT);
         sectionTitle.setPadding(5, 30, 5, 15);
         sectionTitle.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -407,7 +436,10 @@ public class HomeActivity extends AppCompatActivity {
 
         partyCard.setTextSize(17);
         partyCard.setTextColor(0xFFB92D68);
-        partyCard.setTypeface(null, android.graphics.Typeface.BOLD);
+        partyCard.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
         partyCard.setGravity(Gravity.RIGHT);
         partyCard.setPadding(30, 25, 30, 25);
         partyCard.setBackgroundResource(
@@ -502,6 +534,9 @@ public class HomeActivity extends AppCompatActivity {
 
                     String userId = user.getUid();
                     String partyId = document.getId();
+
+                    // ביטול התזכורת של המסיבה שנמחקת
+                    PartyReminder.cancel(this, partyId);
 
                     // כתובת המסיבה ב-Firebase
                     com.google.firebase.firestore.DocumentReference partyRef =

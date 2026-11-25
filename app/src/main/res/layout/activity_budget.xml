@@ -35,6 +35,8 @@
             android:layout_marginTop="25dp"
             android:layout_marginBottom="25dp" />
 
+        <!-- סיכום התקציב -->
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -84,42 +86,96 @@
                 android:gravity="center"
                 android:padding="8dp" />
 
+            <ProgressBar
+                android:id="@+id/budgetProgress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="18dp"
+                android:layout_marginTop="15dp"
+                android:layout_marginBottom="10dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="#E83E82"
+                android:progressBackgroundTint="#F8D5E3" />
+
+            <TextView
+                android:id="@+id/budgetStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="הגדירי תקציב כדי לעקוב אחרי ההוצאות"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#B92D68"
+                android:gravity="center"
+                android:padding="8dp" />
+
         </LinearLayout>
+
+        <!-- כפתורי תקציב -->
 
         <Button
             android:id="@+id/setBudgetButton"
             android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:layout_marginTop="20dp"
-            android:background="@drawable/pink_button"
-            android:backgroundTint="@null"
+            android:layout_height="wrap_content"
             android:text="הגדרת תקציב"
-            android:textSize="17sp"
             android:textColor="#FFFFFF"
-            android:textAllCaps="false" />
+            android:backgroundTint="#E83E82"
+            android:layout_marginTop="20dp" />
 
         <Button
             android:id="@+id/addExpenseButton"
             android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:layout_marginTop="15dp"
-            android:background="@drawable/pink_button"
-            android:backgroundTint="@null"
+            android:layout_height="wrap_content"
             android:text="הוספת הוצאה +"
-            android:textSize="17sp"
             android:textColor="#FFFFFF"
-            android:textAllCaps="false" />
+            android:backgroundTint="#B92D68"
+            android:layout_marginTop="10dp" />
+
+        <!-- סיכום קטגוריות -->
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="ההוצאות שלי 💸"
+            android:text="סיכום לפי קטגוריות"
+            android:textSize="21sp"
+            android:textStyle="bold"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:layout_marginTop="25dp"
+            android:layout_marginBottom="10dp" />
+
+        <TextView
+            android:id="@+id/categorySummaryText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="עדיין אין הוצאות"
+            android:textSize="16sp"
+            android:textColor="#B92D68"
+            android:padding="15dp"
+            android:background="@drawable/edit_text_background" />
+
+        <!-- רשימת הוצאות -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="רשימת ההוצאות"
             android:textSize="23sp"
             android:textStyle="bold"
             android:textColor="#B92D68"
             android:gravity="center"
-            android:layout_marginTop="30dp"
+            android:layout_marginTop="25dp"
             android:layout_marginBottom="15dp" />
+
+        <TextView
+            android:id="@+id/emptyExpensesText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="עדיין לא הוספת הוצאות"
+            android:textSize="17sp"
+            android:textColor="#B92D68"
+            android:gravity="center"
+            android:padding="15dp" />
 
         <LinearLayout
             android:id="@+id/expensesContainer"
@@ -127,28 +183,17 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
-        <TextView
+        <!-- חזרה -->
+
+        <Button
+            android:id="@+id/backButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="עדיין לא נוספו הוצאות"
-            android:textSize="16sp"
-            android:textColor="#B92D68"
-            android:gravity="center"
-            android:padding="15dp" />
-
-        <TextView
-            android:id="@+id/backButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:text="חזרה"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#E83E82"
             android:layout_marginTop="25dp"
-            android:layout_marginBottom="20dp"
-            android:text="חזרה למסיבה"
-            android:textColor="#D82F73"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:clickable="true"
-            android:focusable="true"
-            android:padding="10dp" />
+            android:layout_marginBottom="20dp" />
 
     </LinearLayout>
 
